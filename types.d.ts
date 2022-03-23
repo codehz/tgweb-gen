@@ -21,6 +21,32 @@ export type Photo = {
   dc_id: number;
 };
 
+type _DocumentAttribute = {
+  documentAttributeImageSize: {
+    w: number;
+    h: number;
+  };
+  documentAttributeSticker: {
+    alt: string;
+  };
+  documentAttributeVideo: {
+    duration: number;
+    w: number;
+    h: number;
+  };
+  documentAttributeAudio: {
+    duration: number;
+    title?: string;
+  };
+  documentAttributeFilename: {
+    file_name: string;
+  };
+};
+
+export type DocumentAttribute<
+  K extends keyof _DocumentAttribute = keyof _DocumentAttribute,
+> = ToUnderscore<_DocumentAttribute, K>;
+
 export type Document = {
   id: string;
   access_hash: string;
@@ -29,6 +55,7 @@ export type Document = {
   mime_type: string;
   size: number;
   dc_id: number;
+  attributes: DocumentAttribute[];
 };
 
 export type _MessageMedia = {

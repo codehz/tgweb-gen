@@ -13,7 +13,7 @@ import {
   renderToString,
 } from "https://deno.land/x/jsx@v0.1.5/mod.ts";
 
-import { Message, MessageEntity } from "./types.d.ts";
+import { Message, MessageEntity, PhotoSize, Document } from "./types.d.ts";
 
 const { database, output, channel, style, script, cache } = new Command(
   "tgweb-generate"
@@ -100,6 +100,35 @@ function encodeU64(int: bigint) {
   return BigInt.asUintN(64, int).toString(16).toUpperCase().padStart(16, "0");
 }
 
+function findsize(sizes: PhotoSize[]) {
+  const sorted = [...sizes].filter((x) => x.h).sort((a, b) => a.w! - b.w!) as {
+    w: number;
+    h: number;
+  }[];
+  return sorted[0];
+}
+
+type DocumentInfo = {
+  size: number;
+  date: number;
+  mime_type: string;
+  file_name?: string;
+};
+
+function documentinfo(doc: Document) {
+  const info: DocumentInfo = {
+    size: doc.size,
+    date: doc.date,
+    mime_type: doc.mime_type,
+  };
+  for (const attr of doc.attributes) {
+    if (attr._ === "documentAttributeFilename") {
+      info.file_name = attr.file_name;
+    }
+  }
+  return info;
+}
+
 try {
   const channels = database.queryArray<
     [string, string]
@@ -122,18 +151,37 @@ try {
         if (parsed.media) {
           if (parsed.media._ == "messageMediaPhoto") {
             const id = encodeU64(BigInt(parsed.media.photo.id));
-            console.log(message.length);
+            const { w: width = "", h: height = "" } =
+              findsize(parsed.media.photo.sizes) ?? {};
             media = message.length ? (
-              <img src={cache + "/" + id} />
+              <img
+                src={cache + "/" + id}
+                loading="lazy"
+                width={width}
+                height={height}
+              />
             ) : (
-              <img src={cache + "/" + id} class="only" />
+              <img
+                src={cache + "/" + id}
+                loading="lazy"
+                width={width}
+                height={height}
+                class="only"
+              />
+            );
+          } else if (parsed.media._ == "messageMediaDocument") {
+            const { file_name, ...rest } = documentinfo(parsed.media.document);
+            media = (
+              <tg-message-document {...rest}>{file_name}</tg-message-document>
             );
           }
         }
         return (
           <tg-message
-            id={id}
+            id={"msg-" + id}
+            msgid={id}
             date={parsed.date}
+            group={parsed.grouped_id ?? ""}
             edit_date={parsed.edit_date ?? ""}
           >
             {media}
@@ -143,7 +191,8 @@ try {
       } else if ("title" in parsed.action)
         return (
           <tg-service-message
-            id={id}
+            id={"msg-" + id}
+            msgid={id}
             date={parsed.date}
             action={parsed.action._}
             newtitle={parsed.action.title}

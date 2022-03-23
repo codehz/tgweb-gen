@@ -68,3 +68,7 @@ tg-message img.only {
 tg-message-entity {
   background-color: rgb(0 0 0 / 0.1);
 }
+
+tg-message-document {
+  display: block;
+}
